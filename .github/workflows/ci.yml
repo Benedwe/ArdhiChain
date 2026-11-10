@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 20
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install
+      - name: Build backend
+        run: npm --workspace backend run build
+      - name: Build frontend
+        run: npm --workspace frontend run build
+      - name: Compile contracts
+        run: npm --workspace contracts run compile
+      - name: Run contract tests
+        run: npm --workspace contracts test

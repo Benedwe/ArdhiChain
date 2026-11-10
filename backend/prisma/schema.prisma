@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CITIZEN
+  OFFICER
+  ADMIN
+}
+
+enum EscrowStatus {
+  PENDING
+  RELEASED
+  REFUNDED
+  CANCELLED
+}
+
+enum ProposalStatus {
+  OPEN
+  EXECUTED
+  FAILED
+}
+
+enum DisputeStatus {
+  OPEN
+  EVIDENCE_SUBMITTED
+  RESOLVED
+  REJECTED
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String?
+  email         String?   @unique
+  walletAddress String    @unique
+  role          UserRole  @default(CITIZEN)
+  createdAt     DateTime  @default(now())
+  parcels       LandParcel[] @relation("OwnerParcels")
+  buying        Transaction[] @relation("BuyerTransactions")
+  selling       Transaction[] @relation("SellerTransactions")
+  votes         Vote[]
+  auditLogs     AuditLog[] @relation("UserAuditLogs")
+}
+
+model LandParcel {
+  id                 String   @id @default(uuid())
+  parcelNumber       String   @unique
+  coordinates        String
+  areaSize           String
+  nftTokenId         Int?
+  owner             User?    @relation("OwnerParcels", fields: [ownerId], references: [id])
+  ownerId           String?
+  verificationStatus String   @default("Pending")
+  metadataUri        String
+  documentHash       String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  disputes           Dispute[]
+}
+
+model Transaction {
+  id           String       @id @default(uuid())
+  buyer        User         @relation("BuyerTransactions", fields: [buyerId], references: [id])
+  buyerId      String
+  seller       User         @relation("SellerTransactions", fields: [sellerId], references: [id])
+  sellerId     String
+  amount       Decimal
+  escrowStatus EscrowStatus @default(PENDING)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Proposal {
+  id          String         @id @default(uuid())
+  title       String
+  description String
+  status      ProposalStatus @default(OPEN)
+  createdAt   DateTime       @default(now())
+  votes       Vote[]
+}
+
+model Vote {
+  id         String   @id @default(uuid())
+  proposal   Proposal @relation(fields: [proposalId], references: [id])
+  proposalId String
+  voter      User     @relation(fields: [voterId], references: [id])
+  voterId    String
+  vote       Boolean
+  createdAt  DateTime @default(now())
+}
+
+model Dispute {
+  id          String        @id @default(uuid())
+  parcel      LandParcel    @relation(fields: [parcelId], references: [id])
+  parcelId    String
+  status      DisputeStatus @default(OPEN)
+  evidenceHash String
+  description String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  actor     String
+  user      User?    @relation("UserAuditLogs", fields: [userId], references: [id])
+  userId    String?
+  metadata  String?
+  timestamp DateTime @default(now())
+}
